@@ -1,18 +1,18 @@
 use crate::http::request;
 
-use super::method::Method;
+use super::method::{Method, MethodError};
 use std::{convert::TryFrom, error::Error, fmt::{Display, Debug, Formatter, Result as FmtResult}, str};
 use std::str::Utf8Error;
-pub struct Request{
-    path: String,
-    query_string: Option<String>,
+pub struct Request<'buf>{
+    path: &'buf str,
+    query_string: Option<&'buf str>,
     method: Method,
 }
 
-impl TryFrom<&[u8]> for Request {
+impl<'buf> TryFrom<&'buf [u8]> for Request<'buf> {
     type Error = parseError;
 
-    fn try_from(buffer: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(buffer: &'buf [u8]) -> Result<Request<'buf>, Self::Error> {
         // // 1. Original Long code
         // match str::from_utf8(buffer) {
         //     Ok(request) => {}
@@ -30,16 +30,50 @@ impl TryFrom<&[u8]> for Request {
         // 4. Refactor shortest code
         let request = str::from_utf8(buffer)?;
 
+        // match get_next_word(request) {
+        //     Some((method, request)) => {}
+        //     None => return Err(parseError::InvalidRequest),
+        // }
 
-        unimplemented!()
+        //Refactored code
+        let (method, request) = get_next_word(request).ok_or(parseError::InvalidRequest)?;
+        let (mut path, request) = get_next_word(request).ok_or(parseError::InvalidRequest)?;
+        let (protocol, _) = get_next_word(request).ok_or(parseError::InvalidRequest)?;
+
+        if protocol != "HTTP/1.1" {
+            return Err(parseError::InvalidProtocol);
+        }
+
+        let method: Method = method.parse()?;
+
+        // let mut query_string = None;
+        // match path.find('?') {
+        //     Some(i) => {
+        //         query_string = Some(&path[i+1..]);
+        //         path = &path[..i];
+        //     }
+        //     None => {}
+        // }
+
+        //Refactored code
+        let mut query_string = None;
+        if let Some(i) = path.find('?') {
+            query_string = Some(&path[i+1..]);
+            path = &path[..i];
+        }
+
+        Ok(Self {
+            path,
+            query_string,
+            method
+        })
     }
 }
 
 fn get_next_word(request: &str) -> Option<(&str, &str)> {
     for (index, letter) in request.chars().enumerate() {
-        let word: String;
-        if letter == ' '{
-            return Some((&request[..index], &request[index+1..]))
+        if letter == ' ' || letter == '\r' {
+            return Some((&request[..index], &request[index+1..]));
         }
     }
     None
@@ -60,6 +94,12 @@ impl parseError {
             Self::InvalidProtocol => "Invalid Protocol",
             Self::InvalidMethod => "Invalid Method"
         }
+    }
+}
+
+impl From<MethodError> for parseError {
+    fn from(_: MethodError) -> Self {
+        Self::InvalidMethod
     }
 }
 
