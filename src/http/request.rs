@@ -4,6 +4,8 @@ use super::method::{Method, MethodError};
 use std::{convert::TryFrom, error::Error, fmt::{Display, Debug, Formatter, Result as FmtResult}, str};
 use super::QueryString;
 use std::str::Utf8Error;
+
+#[derive(Debug)]
 pub struct Request<'buf>{
     path: &'buf str,
     query_string: Option<QueryString<'buf>>,

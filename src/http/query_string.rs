@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 use std::convert::From;
+
+#[derive(Debug)]
 pub struct QueryString<'buf> {
   data: HashMap<&'buf str, Value<'buf>>
 }
 
+#[derive(Debug)]
 pub enum Value<'buf > {
   Single(&'buf str),
   Multiple(Vec<&'buf str>),
@@ -15,9 +18,9 @@ impl<'buf > QueryString<'buf > {
   } 
 }
 
-// a=1&b=2&c&d=&e===&d=7&d=abc
+// ?a=1&b=2&c&d=&e===&d=7&d=abc
 impl<'buf> From<&'buf str> for QueryString<'buf> {
-  fn from(s: &str) -> Self {
+  fn from(s: &'buf str) -> Self {
     let mut data = HashMap::new();
 
     for sub_str in s.split('&') {
@@ -32,12 +35,12 @@ impl<'buf> From<&'buf str> for QueryString<'buf> {
         Value::Single(pre_val) => {
           *existing = Value::Multiple(vec![pre_val, val]);
         },
-        Value::Multiple(vec) => vec.push(val)
+        Value::Multiple(vec) => vec.push(val),
 
       })
       .or_insert(Value::Single(val));
     }
-    QueryString { data };
-    unimplemented!()
+
+    QueryString { data }
   }
 }
