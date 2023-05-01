@@ -1,6 +1,6 @@
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
 use server::Server;
-use http::Method;
-use http::Request;
 
 mod server;
 mod http;
